@@ -194,7 +194,7 @@ final class WebServer {
     private void sendMessages(OutputStream out, Chat.Pc pc, String query) throws IOException {
         long after = 0;
         for (String kv : query.split("&")) if (kv.startsWith("after=")) after = parseId(kv.substring(6));
-        StringBuilder sb = new StringBuilder("{\"name\":\"").append(jsonEsc(pc.name)).append("\",\"msgs\":[");
+        StringBuilder sb = new StringBuilder("{\"name\":\"").append(jsonEsc(pc.name)).append("\",\"gen\":").append(Chat.gen()).append(",\"msgs\":[");
         boolean first = true;
         for (Chat.Msg m : Chat.after(pc.id, Math.max(after, 0))) {
             if (!first) sb.append(',');

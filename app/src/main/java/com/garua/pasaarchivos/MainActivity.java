@@ -77,7 +77,7 @@ public class MainActivity extends Activity {
     // pantalla de inicio
     private View home;
     private LinearLayout homeHeader, pcList, updateBox, connectBody, pendingBox;
-    private TextView statusPill, updateTitle, updateNotes, updateBtn, connectTitle, chevron, addrView, altView, batteryLink, pendingText;
+    private TextView statusPill, updateTitle, updateNotes, updateBtn, connectTitle, chevron, addrView, altView, batteryLink, pendingText, cleanLink;
     private final TextView[] digits = new TextView[4];
     private boolean connectOpen, connectTouched;
 
@@ -146,6 +146,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        try { Chat.autoClean(this); } catch (Exception ignored) {}
         handler.post(ticker);
         if (pendingInstall && update != null && Updater.canInstall(this)) { pendingInstall = false; doInstall(); }
         Updater.check(this, false, (info, err) -> { if (info != null) showUpdate(info); });
@@ -478,6 +479,8 @@ public class MainActivity extends Activity {
         foot.setPadding(dp(20), dp(8), dp(20), dp(24));
         batteryLink = link("Evitar que Android cierre PasaArchivos", PRI, v -> askBattery());
         foot.addView(batteryLink);
+        cleanLink = link("", PRI, v -> cleanSettings());
+        foot.addView(cleanLink);
         foot.addView(link("Buscar actualizaciones", PRI, v -> manualCheck()));
         foot.addView(link("Detener PasaArchivos", ERR, v -> {
             startService(new Intent(this, ShareService.class).setAction(ShareService.ACTION_STOP));
@@ -574,8 +577,8 @@ public class MainActivity extends Activity {
         Chat.Pc p = Chat.byId(id);
         if (p == null) return;
         new AlertDialog.Builder(this).setTitle(p.name)
-            .setItems(new String[] { "Cambiar nombre", "Quitar esta computadora" }, (d, w) -> {
-                if (w == 0) renamePc(id); else removePc(id);
+            .setItems(new String[] { "Cambiar nombre", "Vaciar la conversación", "Quitar esta computadora" }, (d, w) -> {
+                if (w == 0) renamePc(id); else if (w == 1) clearChat(id); else removePc(id);
             }).show();
     }
 
@@ -648,9 +651,10 @@ public class MainActivity extends Activity {
         menu.setOnClickListener(v -> {
             if (currentPc == null) return;
             new AlertDialog.Builder(this)
-                .setItems(new String[] { "Cambiar nombre", "Abrir la carpeta Descargas", "Quitar esta computadora" }, (d, w) -> {
+                .setItems(new String[] { "Cambiar nombre", "Vaciar esta conversación", "Abrir la carpeta Descargas", "Quitar esta computadora" }, (d, w) -> {
                     if (w == 0) renamePc(currentPc);
-                    else if (w == 1) open(null, null);
+                    else if (w == 1) clearChat(currentPc);
+                    else if (w == 2) open(null, null);
                     else removePc(currentPc);
                 }).show();
         });
@@ -850,15 +854,97 @@ public class MainActivity extends Activity {
         mp.topMargin = dp(3);
         meta.setLayoutParams(mp);
         b.addView(meta);
-        if (!m.isFile()) {
-            b.setOnLongClickListener(v -> {
+        b.setOnLongClickListener(v -> { msgMenu(m); return true; });
+        for (int k = 0; k < b.getChildCount(); k++) b.getChildAt(k).setOnLongClickListener(v -> { msgMenu(m); return true; });
+        return b;
+    }
+
+    private void msgMenu(Chat.Msg m) {
+        List<String> opts = new ArrayList<>();
+        List<Runnable> acts = new ArrayList<>();
+        if (m.isFile()) { opts.add("Abrir"); acts.add(() -> open(m.uri, m.mime)); }
+        else {
+            opts.add("Copiar texto");
+            acts.add(() -> {
                 ClipboardManager cm = getSystemService(ClipboardManager.class);
                 cm.setPrimaryClip(ClipData.newPlainText("PasaArchivos", m.text));
                 Toast.makeText(this, "Texto copiado", Toast.LENGTH_SHORT).show();
-                return true;
             });
         }
-        return b;
+        opts.add("Borrar del chat");
+        acts.add(() -> { Chat.removeMsg(m.id, false); refresh(true); });
+        if (m.isFile() && m.fromPc && m.uri != null) {
+            opts.add("Borrar del chat y del celular");
+            acts.add(() -> new AlertDialog.Builder(this).setTitle("Borrar «" + m.name + "»")
+                .setMessage("Se quita del chat y se borra de Descargas › PasaArchivos. No se puede recuperar.")
+                .setPositiveButton("Borrar", (d, w) -> { Chat.removeMsg(m.id, true); refresh(true); })
+                .setNegativeButton("Cancelar", null).show());
+        }
+        new AlertDialog.Builder(this).setItems(opts.toArray(new String[0]), (d, w) -> acts.get(w).run()).show();
+    }
+
+    private void clearChat(String pcId) {
+        Chat.Pc p = Chat.byId(pcId);
+        if (p == null) return;
+        android.widget.CheckBox files = new android.widget.CheckBox(this);
+        files.setText("Borrar también del celular los archivos que mandó esta computadora");
+        files.setTextSize(14);
+        FrameLayout box = new FrameLayout(this);
+        box.setPadding(dp(20), dp(4), dp(20), 0);
+        box.addView(files);
+        new AlertDialog.Builder(this).setTitle("Vaciar la conversación con " + p.name)
+            .setMessage("Se borran todos los mensajes y archivos del chat. Tus fotos y archivos originales del celular no se tocan.")
+            .setView(box)
+            .setPositiveButton("Vaciar", (d, w) -> { Chat.clearPc(pcId, files.isChecked()); refresh(true); })
+            .setNegativeButton("Cancelar", null).show();
+    }
+
+    private static final int[] CLEAN_DAYS = { 0, 1, 10, 30 };
+    private static final String[] CLEAN_NAMES = { "Nunca", "Cada día (lo de más de 1 día)", "Lo de más de 10 días", "Lo de más de 1 mes" };
+
+    private String cleanLabel() {
+        int d = Chat.autoDays(this);
+        return d == 0 ? "Limpieza automática: apagada" : "Limpieza automática: " + (d == 1 ? "1 día" : d == 30 ? "1 mes" : d + " días")
+                + (Chat.autoFiles(this) ? " · también archivos" : "");
+    }
+
+    private void cleanSettings() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        android.widget.RadioGroup rg = new android.widget.RadioGroup(this);
+        int cur = Chat.autoDays(this);
+        for (int i = 0; i < CLEAN_DAYS.length; i++) {
+            android.widget.RadioButton rb = new android.widget.RadioButton(this);
+            rb.setId(View.generateViewId());
+            rb.setText(CLEAN_NAMES[i]);
+            rb.setTextSize(15);
+            rb.setTag(CLEAN_DAYS[i]);
+            rg.addView(rb);
+            if (CLEAN_DAYS[i] == cur) rg.check(rb.getId());
+        }
+        box.addView(rg);
+        android.widget.CheckBox files = new android.widget.CheckBox(this);
+        files.setText("Borrar también de Descargas › PasaArchivos los archivos que llegaron de las computadoras");
+        files.setTextSize(14);
+        files.setChecked(Chat.autoFiles(this));
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, -2);
+        fp.topMargin = dp(10);
+        box.addView(files, fp);
+        TextView note = label("Lo que mandás desde el celular nunca se borra de tu galería: solo se quita del chat. "
+                + "Si marcás la casilla, los archivos recibidos se borran sin preguntar y no se pueden recuperar.", 12, MUT, false);
+        note.setPadding(0, dp(8), 0, 0);
+        box.addView(note);
+        new AlertDialog.Builder(this).setTitle("Limpieza automática").setView(box)
+            .setPositiveButton("Guardar", (d, w) -> {
+                View sel = rg.findViewById(rg.getCheckedRadioButtonId());
+                int days = sel == null ? 0 : (Integer) sel.getTag();
+                Chat.setAuto(this, days, days > 0 && files.isChecked());
+                int n = Chat.autoDays(this) > 0 ? Chat.purge(days * 24L * 60 * 60 * 1000, Chat.autoFiles(this)) : 0;
+                if (n > 0) Toast.makeText(this, "Se limpiaron " + n + (n == 1 ? " mensaje" : " mensajes") + " viejos.", Toast.LENGTH_LONG).show();
+                refresh(true);
+            })
+            .setNegativeButton("Cancelar", null).show();
     }
 
     private View emptyChat(Chat.Pc p) {
@@ -931,6 +1017,7 @@ public class MainActivity extends Activity {
             }
         }
         batteryLink.setVisibility(batteryFree() ? View.GONE : View.VISIBLE);
+        cleanLink.setText(cleanLabel());
     }
 
     private void refreshChat(boolean force) {

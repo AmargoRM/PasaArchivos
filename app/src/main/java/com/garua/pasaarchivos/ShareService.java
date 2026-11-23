@@ -28,6 +28,7 @@ public class ShareService extends Service {
     static volatile boolean nameOn;
     static volatile String startError;
 
+    private java.util.concurrent.ScheduledExecutorService cleaner;
     private WifiManager.WifiLock wifiLock;
     private WifiManager.MulticastLock mcLock;
 
@@ -59,6 +60,9 @@ public class ShareService extends Service {
             }
         } catch (Exception ignored) {}
         Chat.init(this);
+        cleaner = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+        cleaner.scheduleWithFixedDelay(() -> { try { Chat.autoClean(this); } catch (Exception ignored) {} },
+                0, 30, java.util.concurrent.TimeUnit.MINUTES);
         final LocalName ln = new LocalName(pref(this, "name", 4, "cel-"));
         final WebServer ws = new WebServer(this, ln.host());
         new Thread(() -> {
@@ -78,6 +82,7 @@ public class ShareService extends Service {
     }
 
     @Override public void onDestroy() {
+        if (cleaner != null) cleaner.shutdownNow();
         WebServer ws = server; server = null;
         if (ws != null) ws.stop();
         LocalName ln = localName; localName = null; nameOn = false;

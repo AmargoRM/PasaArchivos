@@ -46,6 +46,7 @@ final class Chat {
     private static final List<Msg> msgs = new ArrayList<>();
     private static long nextId = 1;
     private static int version = 0;
+    private static int gen = 0;            // cambia cuando se borra algo (la página de la PC recarga todo)
 
     static synchronized void init(Context c) {
         if (ctx != null) return;
@@ -54,6 +55,7 @@ final class Chat {
     }
 
     static synchronized int version() { return version; }
+    static synchronized int gen() { return gen; }
     private static void changed() { version++; save(); }
 
     // ---------- computadoras ----------
@@ -172,6 +174,69 @@ final class Chat {
     }
 
     static synchronized void setUri(Msg m, Uri u) { m.uri = u; changed(); }
+
+    // ---------- borrar ----------
+
+    /** Borra un mensaje. Con {@code alsoFile}, si lo mandó la PC, borra también el archivo de Descargas. */
+    static synchronized void removeMsg(long id, boolean alsoFile) {
+        for (int i = 0; i < msgs.size(); i++) {
+            Msg m = msgs.get(i);
+            if (m.id != id) continue;
+            if (alsoFile) deleteReceived(m);
+            msgs.remove(i);
+            gen++;
+            changed();
+            return;
+        }
+    }
+
+    static synchronized void clearPc(String pcId, boolean alsoFiles) {
+        boolean any = false;
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            Msg m = msgs.get(i);
+            if (!m.pc.equals(pcId)) continue;
+            if (alsoFiles) deleteReceived(m);
+            msgs.remove(i);
+            any = true;
+        }
+        if (any) { gen++; changed(); }
+    }
+
+    /** Borra lo que tenga más de {@code maxAgeMs}. Devuelve cuántos mensajes quitó. */
+    static synchronized int purge(long maxAgeMs, boolean alsoFiles) {
+        long limit = System.currentTimeMillis() - maxAgeMs;
+        int n = 0;
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            Msg m = msgs.get(i);
+            if (m.time >= limit) continue;
+            if (alsoFiles) deleteReceived(m);
+            msgs.remove(i);
+            n++;
+        }
+        if (n > 0) { gen++; changed(); }
+        return n;
+    }
+
+    /** Solo borra archivos que llegaron de una PC; nunca los originales del celular. */
+    private static void deleteReceived(Msg m) {
+        if (!m.fromPc || !m.isFile() || m.uri == null || ctx == null) return;
+        try { ctx.getContentResolver().delete(m.uri, null, null); } catch (Exception ignored) {}
+    }
+
+    static final String PREF_DAYS = "limpieza_dias", PREF_FILES = "limpieza_archivos";
+
+    static int autoDays(Context c) { return c.getSharedPreferences("pasaarchivos", Context.MODE_PRIVATE).getInt(PREF_DAYS, 0); }
+    static boolean autoFiles(Context c) { return c.getSharedPreferences("pasaarchivos", Context.MODE_PRIVATE).getBoolean(PREF_FILES, false); }
+
+    static void setAuto(Context c, int days, boolean files) {
+        c.getSharedPreferences("pasaarchivos", Context.MODE_PRIVATE).edit().putInt(PREF_DAYS, days).putBoolean(PREF_FILES, files).apply();
+    }
+
+    /** Aplica la limpieza automática elegida (si hay). */
+    static void autoClean(Context c) {
+        int days = autoDays(c);
+        if (days > 0) purge(days * 24L * 60 * 60 * 1000, autoFiles(c));
+    }
 
     // ---------- guardar y cargar ----------
 

@@ -1,1 +1,1 @@
-Primera versión de PasaArchivos: un chat con cada computadora para pasar archivos y mensajes en los dos sentidos, con acceso guardado por computadora y aviso automático de actualizaciones.
+Limpieza: mantené presionado un mensaje para borrarlo, vaciá una conversación desde el menú ⋮ y elegí limpieza automática (1 día, 10 días o 1 mes) al final de la pantalla principal.
