@@ -1,0 +1,16 @@
+:root{--bg:#f4f1ea;--ink:#17212b;--mut:#66727e;--line:#e3ded3;--pri:#0f766e;--pri2:#0c4a6e;--soft:#e6f4f1;--ok:#15803d;--err:#b3261e;--amb:#f5b301}
+*{box-sizing:border-box}
+body{font-family:'Segoe UI Variable Text','Segoe UI',system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+.btn{font:inherit;font-size:14px;font-weight:600;border-radius:10px;padding:9px 15px;cursor:pointer;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--ink);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:#bfb8a8}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.p:hover{background:#0b5f59}
+.btn.g{background:transparent;border-color:transparent;color:var(--pri)}
+.btn.g:hover{background:var(--soft)}
+.box{max-width:400px;margin:13vh auto;background:#fff;border:1px solid var(--line);padding:34px 30px;border-radius:18px;text-align:center;box-shadow:0 10px 30px rgba(23,33,43,.08)}
+.box img{width:64px;height:64px;border-radius:16px}
+.box h2{margin:14px 0 6px;font-size:22px}
+.box p{color:var(--mut);font-size:14px;margin:6px 0;line-height:1.45}
+.box input{font:inherit;font-size:34px;font-weight:700;width:190px;text-align:center;letter-spacing:10px;padding:10px 0 10px 10px;margin:16px 0 6px;border:2px solid var(--line);border-radius:12px;outline:0;color:var(--ink)}
+.box input:focus{border-color:var(--pri)}
+.err{color:var(--err)!important;font-weight:600}

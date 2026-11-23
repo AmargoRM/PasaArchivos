@@ -1,0 +1,1 @@
+Primera versión con el nombre PasaArchivos: pestañas Enviar y Recibido, miniaturas, selección múltiple en la PC y aviso automático de actualizaciones.

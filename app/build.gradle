@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+// La versión la pone GitHub Actions a partir de la etiqueta (v2.0.0 -> versionCode 20000).
+def vName = (project.findProperty('vName') ?: '0.0.0-dev').toString()
+def vCode = (project.findProperty('vCode') ?: '1').toString().toInteger()
+
+android {
+    namespace 'com.garua.pasaarchivos'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.garua.pasaarchivos'
+        minSdk 26
+        targetSdk 36
+        versionCode vCode
+        versionName vName
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('release.jks')
+            storePassword System.getenv('KS_PASS')
+            keyAlias 'pasaarchivos'
+            keyPassword System.getenv('KEY_PASS')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}

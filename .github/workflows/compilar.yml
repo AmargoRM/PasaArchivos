@@ -1,0 +1,87 @@
+name: Compilar y publicar
+
+# - Cada push a main compila el APK para revisar que todo esté bien (queda como artefacto).
+# - Cada etiqueta vX.Y.Z compila, firma y publica una versión en Releases.
+#   La app instalada revisa esa publicación para avisar que hay actualización.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Número de versión
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="0.0.${GITHUB_RUN_NUMBER}-prueba"
+          fi
+          IFS=. read -r MA MI PA <<< "${V%%-*}"
+          CODE=$(( MA * 10000 + MI * 100 + PA ))
+          echo "VNAME=$V" >> "$GITHUB_ENV"
+          echo "VCODE=$CODE" >> "$GITHUB_ENV"
+          echo "Versión $V (código $CODE)"
+
+      - name: Llave de firma
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > app/release.jks
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::Falta el secreto KEYSTORE_B64. Sin la llave no se puede publicar una actualización."
+            exit 1
+          else
+            echo "::warning::Sin secreto KEYSTORE_B64: se firma con una llave de prueba (solo sirve para revisar que compila)."
+            keytool -genkeypair -keystore app/release.jks -storetype PKCS12 -storepass prueba123 -keypass prueba123 \
+              -alias pasaarchivos -keyalg RSA -keysize 2048 -validity 30 -dname "CN=Prueba"
+          fi
+
+      - name: Compilar APK
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASS || 'prueba123' }}
+          KEY_PASS: ${{ secrets.KEYSTORE_PASS || 'prueba123' }}
+        run: gradle :app:assembleRelease -PvName="$VNAME" -PvCode="$VCODE" --no-daemon --stacktrace
+
+      - name: Preparar archivos
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk PasaArchivos.apk
+          rm -f app/release.jks
+          jq -n --argjson code "$VCODE" --arg name "$VNAME" \
+                --arg apk "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VNAME}/PasaArchivos.apk" \
+                --rawfile notes NOTAS_VERSION.txt \
+                '{versionCode:$code, versionName:$name, apk:$apk, notes:($notes|rtrimstr("\n"))}' > version.json
+          cat version.json
+
+      - name: Guardar APK de prueba
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: PasaArchivos-prueba
+          path: PasaArchivos.apk
+
+      - name: Publicar versión
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" PasaArchivos.apk version.json \
+            --title "PasaArchivos $VNAME" --notes-file NOTAS_VERSION.txt --latest
