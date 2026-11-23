@@ -23,6 +23,6 @@ Hecha por [Garúa](https://garuas.com).
 ## Para desarrollar
 
 - Proyecto Android en Java, sin dependencias externas. `minSdk 26`, `targetSdk 36`.
-- GitHub Actions compila cada cambio en `main` (APK de prueba como artefacto) y **publica una versión** cuando se crea una etiqueta `vX.Y.Z`. El `versionCode` sale de la etiqueta: `v2.1.3` → `20103`.
+- GitHub Actions compila cada cambio en `main`. El número de versión está en el archivo `VERSION`: si cambia y todavía no hay publicación para ese número, **publica una versión** nueva en Releases. El `versionCode` sale de ese número: `2.1.3` → `20103`.
 - Las notas de cada versión van en `NOTAS_VERSION.txt`; la app las muestra en el aviso de actualización.
 - La firma usa los secretos `KEYSTORE_B64` y `KEYSTORE_PASS` del repositorio. **Sin esa llave no se pueden publicar actualizaciones** para las apps ya instaladas.

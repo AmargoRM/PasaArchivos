@@ -1,8 +1,9 @@
 name: Compilar y publicar
 
-# - Cada push a main compila el APK para revisar que todo esté bien (queda como artefacto).
-# - Cada etiqueta vX.Y.Z compila, firma y publica una versión en Releases.
+# - Cada push a main compila y firma el APK con el número del archivo VERSION.
+# - Si todavía no existe una publicación (Release) para ese número, la crea con el APK y version.json.
 #   La app instalada revisa esa publicación para avisar que hay actualización.
+# - Para sacar una versión nueva: subir el número en VERSION y escribir las novedades en NOTAS_VERSION.txt.
 on:
   push:
     branches: [main]
@@ -28,17 +29,17 @@ jobs:
           gradle-version: '8.14.3'
 
       - name: Número de versión
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            V="${GITHUB_REF_NAME#v}"
-          else
-            V="0.0.${GITHUB_RUN_NUMBER}-prueba"
-          fi
-          IFS=. read -r MA MI PA <<< "${V%%-*}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="$(tr -d ' \r\n' < VERSION)"; fi
+          IFS=. read -r MA MI PA <<< "$V"
           CODE=$(( MA * 10000 + MI * 100 + PA ))
+          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then PUB=no; else PUB=yes; fi
           echo "VNAME=$V" >> "$GITHUB_ENV"
           echo "VCODE=$CODE" >> "$GITHUB_ENV"
-          echo "Versión $V (código $CODE)"
+          echo "PUBLICAR=$PUB" >> "$GITHUB_ENV"
+          echo "Versión $V (código $CODE) · publicar: $PUB"
 
       - name: Llave de firma
         env:
@@ -46,7 +47,7 @@ jobs:
         run: |
           if [ -n "$KS_B64" ]; then
             echo "$KS_B64" | base64 -d > app/release.jks
-          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          elif [ "$PUBLICAR" = yes ]; then
             echo "::error::Falta el secreto KEYSTORE_B64. Sin la llave no se puede publicar una actualización."
             exit 1
           else
@@ -72,16 +73,16 @@ jobs:
           cat version.json
 
       - name: Guardar APK de prueba
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: env.PUBLICAR != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: PasaArchivos-prueba
           path: PasaArchivos.apk
 
       - name: Publicar versión
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.PUBLICAR == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" PasaArchivos.apk version.json \
+          gh release create "v$VNAME" PasaArchivos.apk version.json --target "$GITHUB_SHA" \
             --title "PasaArchivos $VNAME" --notes-file NOTAS_VERSION.txt --latest
