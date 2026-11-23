@@ -30,6 +30,9 @@ final class Thumbs {
         return b;
     }
 
+    /** Imagen grande para el visor (sin caché), con el lado mayor cerca de {@code px}. */
+    static Bitmap full(Context ctx, Uri uri, int px) { return decode(ctx, uri, px); }
+
     private static Bitmap decode(Context ctx, Uri uri, int px) {
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();

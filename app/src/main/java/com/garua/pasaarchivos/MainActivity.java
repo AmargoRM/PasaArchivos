@@ -114,6 +114,7 @@ public class MainActivity extends Activity {
         setContentView(frame);
         buildHome();
         buildChat();
+        buildViewer();
         showHome();
         startShare();
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
@@ -128,6 +129,7 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation") private static int legacyBottom(WindowInsets i) { return i.getSystemWindowInsetBottom(); }
 
     private void applyInsets() {
+        if (viewerTop != null) viewerTop.setPadding(dp(6), insetTop + dp(6), dp(10), dp(8));
         homeHeader.setPadding(dp(20), insetTop + dp(18), dp(20), dp(20));
         ((View) pcList.getParent()).setPadding(0, 0, 0, insetBottom);
         chatTop.setPadding(dp(6), insetTop + dp(6), dp(10), dp(8));
@@ -162,8 +164,14 @@ public class MainActivity extends Activity {
 
     @SuppressWarnings("deprecation")
     @Override public void onBackPressed() {
-        if (chat.getVisibility() == View.VISIBLE) showHome();
-        else super.onBackPressed();
+        if (!handleBack()) super.onBackPressed();
+    }
+
+    /** Atrás dentro de la app: cierra el visor, o vuelve de la conversación a la lista. */
+    private boolean handleBack() {
+        if (viewer != null && viewer.getVisibility() == View.VISIBLE) { closeViewer(); return true; }
+        if (chat.getVisibility() == View.VISIBLE) { showHome(); return true; }
+        return false;
     }
 
     // ---------- lo que llega de otras apps ----------
@@ -742,7 +750,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT < 33) return;
         OnBackInvokedDispatcher d = getOnBackInvokedDispatcher();
         if (inChat && backCb == null) {
-            backCb = this::showHome;
+            backCb = this::handleBack;
             d.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCb);
         } else if (!inChat && backCb != null) {
             d.unregisterOnBackInvokedCallback(backCb);
@@ -817,7 +825,7 @@ public class MainActivity extends Activity {
                 ph.addView(play, new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.CENTER));
             }
             ph.setClickable(true);
-            ph.setOnClickListener(v -> open(m.uri, m.mime));
+            ph.setOnClickListener(v -> openViewer(m));
             b.addView(ph);
             TextView cap = label(m.name + (m.size > 0 ? "  ·  " + human(m.size) : ""), 12, MUT, false);
             cap.setSingleLine(true);
@@ -1112,5 +1120,177 @@ public class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    // ---------- visor de fotos y videos ----------
+
+    private FrameLayout viewer;
+    private LinearLayout viewerTop;
+    private ImageView vImg;
+    private android.widget.VideoView vVid;
+    private TextView vName, vCount;
+    private List<Chat.Msg> vList = new ArrayList<>();
+    private int vIdx;
+    private float vScale = 1f;
+    private int vToken;
+
+    private void buildViewer() {
+        viewer = new FrameLayout(this);
+        viewer.setBackgroundColor(Color.BLACK);
+        viewer.setVisibility(View.GONE);
+        viewer.setClickable(true);
+
+        vImg = new ImageView(this);
+        vImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        viewer.addView(vImg, new FrameLayout.LayoutParams(-1, -1));
+
+        vVid = new android.widget.VideoView(this);
+        vVid.setVisibility(View.GONE);
+        viewer.addView(vVid, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+
+        viewerTop = new LinearLayout(this);
+        viewerTop.setGravity(Gravity.CENTER_VERTICAL);
+        viewerTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { Color.argb(190, 0, 0, 0), Color.argb(0, 0, 0, 0) }));
+        TextView close = label("←", 24, Color.WHITE, false);
+        close.setGravity(Gravity.CENTER);
+        close.setLayoutParams(new LinearLayout.LayoutParams(dp(44), dp(44)));
+        close.setClickable(true);
+        close.setOnClickListener(v -> closeViewer());
+        viewerTop.addView(close);
+        LinearLayout tt = new LinearLayout(this);
+        tt.setOrientation(LinearLayout.VERTICAL);
+        tt.setPadding(dp(6), 0, dp(6), 0);
+        tt.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+        vName = label("", 15, Color.WHITE, true);
+        vName.setSingleLine(true);
+        vName.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        vCount = label("", 12, Color.argb(200, 255, 255, 255), false);
+        tt.addView(vName);
+        tt.addView(vCount);
+        viewerTop.addView(tt);
+        TextView share = label("Compartir", 14, Color.WHITE, true);
+        share.setGravity(Gravity.CENTER);
+        share.setPadding(dp(14), 0, dp(14), 0);
+        share.setBackground(shape(Color.argb(60, 255, 255, 255), 18, 0));
+        share.setLayoutParams(new LinearLayout.LayoutParams(-2, dp(36)));
+        share.setClickable(true);
+        share.setOnClickListener(v -> shareCurrent());
+        viewerTop.addView(share);
+        viewer.addView(viewerTop, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+
+        final android.view.ScaleGestureDetector sg = new android.view.ScaleGestureDetector(this,
+            new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override public boolean onScale(android.view.ScaleGestureDetector d) {
+                    setZoom(vScale * d.getScaleFactor());
+                    return true;
+                }
+            });
+        final android.view.GestureDetector gd = new android.view.GestureDetector(this,
+            new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override public boolean onDown(android.view.MotionEvent e) { return true; }
+                @Override public boolean onDoubleTap(android.view.MotionEvent e) {
+                    setZoom(vScale > 1.05f ? 1f : 2.5f);
+                    return true;
+                }
+                @Override public boolean onSingleTapConfirmed(android.view.MotionEvent e) {
+                    viewerTop.setVisibility(viewerTop.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
+                    return true;
+                }
+                @Override public boolean onScroll(android.view.MotionEvent a, android.view.MotionEvent b, float dx, float dy) {
+                    if (vScale <= 1.01f) return false;
+                    float mx = vImg.getWidth() * (vScale - 1) / 2f, my = vImg.getHeight() * (vScale - 1) / 2f;
+                    vImg.setTranslationX(Math.max(-mx, Math.min(mx, vImg.getTranslationX() - dx)));
+                    vImg.setTranslationY(Math.max(-my, Math.min(my, vImg.getTranslationY() - dy)));
+                    return true;
+                }
+                @Override public boolean onFling(android.view.MotionEvent a, android.view.MotionEvent b, float vx, float vy) {
+                    if (vScale > 1.01f || a == null) return false;
+                    float dx = b.getX() - a.getX();
+                    if (Math.abs(dx) > dp(60) && Math.abs(vx) > Math.abs(vy)) { showAt(vIdx + (dx < 0 ? 1 : -1)); return true; }
+                    return false;
+                }
+            });
+        vImg.setOnTouchListener((v, e) -> { sg.onTouchEvent(e); gd.onTouchEvent(e); return true; });
+        frame.addView(viewer, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void setZoom(float z) {
+        vScale = Math.max(1f, Math.min(5f, z));
+        vImg.setScaleX(vScale);
+        vImg.setScaleY(vScale);
+        if (vScale <= 1.01f) { vImg.setTranslationX(0); vImg.setTranslationY(0); }
+    }
+
+    private void openViewer(Chat.Msg m) {
+        if (m.uri == null || currentPc == null) { open(m.uri, m.mime); return; }
+        vList = new ArrayList<>();
+        for (Chat.Msg x : Chat.messages(currentPc)) if (x.uri != null && (x.isImage() || x.isVideo())) vList.add(x);
+        int at = 0;
+        for (int i = 0; i < vList.size(); i++) if (vList.get(i).id == m.id) at = i;
+        hideKeyboard();
+        viewer.setVisibility(View.VISIBLE);
+        viewerTop.setVisibility(View.VISIBLE);
+        getWindow().setStatusBarColor(Color.BLACK);
+        setBack(true);
+        showAt(at);
+    }
+
+    private void showAt(int i) {
+        if (vList.isEmpty() || i < 0 || i >= vList.size()) return;
+        vIdx = i;
+        final Chat.Msg m = vList.get(i);
+        vName.setText(m.name);
+        vCount.setText((i + 1) + " de " + vList.size() + (m.size > 0 ? "  ·  " + human(m.size) : ""));
+        setZoom(1f);
+        vVid.stopPlayback();
+        final int token = ++vToken;
+        if (m.isVideo()) {
+            vImg.setImageDrawable(null);
+            vImg.setVisibility(View.GONE);
+            vVid.setVisibility(View.VISIBLE);
+            android.widget.MediaController mc = new android.widget.MediaController(this);
+            mc.setAnchorView(vVid);
+            vVid.setMediaController(mc);
+            vVid.setVideoURI(m.uri);
+            vVid.setOnErrorListener((mp, what, extra) -> {
+                Toast.makeText(this, "No se pudo reproducir aquí; se abre con otra app.", Toast.LENGTH_SHORT).show();
+                open(m.uri, m.mime);
+                return true;
+            });
+            vVid.start();
+        } else {
+            vVid.setVisibility(View.GONE);
+            vImg.setVisibility(View.VISIBLE);
+            final int px = Math.max(getResources().getDisplayMetrics().widthPixels, getResources().getDisplayMetrics().heightPixels);
+            Bitmap quick = Thumbs.load(this, m.uri, true, 480);
+            vImg.setImageBitmap(quick);
+            thumbs.execute(() -> {
+                Bitmap big = Thumbs.full(this, m.uri, Math.min(px, 2560));
+                vImg.post(() -> {
+                    if (token != vToken) return;
+                    if (big != null) vImg.setImageBitmap(big);
+                    else if (quick == null) Toast.makeText(this, "Esta imagen ya no está disponible en el celular.", Toast.LENGTH_SHORT).show();
+                });
+            });
+        }
+    }
+
+    private void closeViewer() {
+        vToken++;
+        vVid.stopPlayback();
+        vImg.setImageDrawable(null);
+        viewer.setVisibility(View.GONE);
+        if (chat.getVisibility() != View.VISIBLE) setBack(false);
+    }
+
+    private void shareCurrent() {
+        if (vList.isEmpty()) return;
+        Chat.Msg m = vList.get(vIdx);
+        Intent i = new Intent(Intent.ACTION_SEND);
+        i.setType(m.mime == null ? "*/*" : m.mime);
+        i.putExtra(Intent.EXTRA_STREAM, m.uri);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try { startActivity(Intent.createChooser(i, "Compartir")); } catch (Exception ignored) {}
     }
 }
