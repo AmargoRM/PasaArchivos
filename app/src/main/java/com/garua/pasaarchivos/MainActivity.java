@@ -784,12 +784,16 @@ public class MainActivity extends Activity {
         b.setLayoutParams(bp);
 
         if (!m.isFile()) {
-            TextView t = label(m.text, 15.5f, INK, false);
-            t.setMaxWidth(maxW);
-            t.setTextIsSelectable(true);
-            t.setAutoLinkMask(Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+            // Texto simple: sin "seleccionable", que en algunos Android medía la burbuja como si estuviera vacía.
+            TextView t = new TextView(this);
+            t.setTextSize(15.5f);
+            t.setTextColor(INK);
+            t.setMaxWidth(maxW - dp(16));
+            t.setText(m.text);
+            Linkify.addLinks(t, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+            t.setLinkTextColor(PRI2);
             t.setPadding(dp(4), dp(2), dp(4), 0);
-            b.addView(t);
+            b.addView(t, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         } else if ((m.isImage() || m.isVideo()) && m.uri != null) {
             FrameLayout ph = new FrameLayout(this);
             int w = Math.min(maxW, dp(260));

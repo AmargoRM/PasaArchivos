@@ -1,1 +1,1 @@
-Limpieza: mantené presionado un mensaje para borrarlo, vaciá una conversación desde el menú ⋮ y elegí limpieza automática (1 día, 10 días o 1 mes) al final de la pantalla principal.
+Corrige los mensajes de texto que en el celular se veían cortados. Incluye la limpieza de la 2.1.0: mantené presionado un mensaje para borrarlo, vaciá una conversación desde ⋮ y elegí limpieza automática (1 día, 10 días o 1 mes).
