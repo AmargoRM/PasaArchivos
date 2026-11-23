@@ -36,20 +36,30 @@ final class Pages {
              + "<title>" + WebServer.APP + "</title><style>" + asset("base.css") + extraCss + "</style>";
     }
 
+    /** Chat servido por el celular (dirección http). */
     static String chat(String pcName, String token) {
         return asset("pc.html")
             .replace("{{CSS}}", asset("base.css"))
             .replace("{{NAME}}", WebServer.esc(pcName))
-            .replace("{{TOKEN}}", token);
+            .replace("{{TOKEN}}", token)
+            .replace("/*{{BOOT}}*/", "B='';start();");
     }
 
-    static String launcher(String icon, String label, String token, String ipsCsv) {
-        return asset("launcher.html")
-            .replace("{{CSS}}", asset("base.css"))
+    /**
+     * Acceso para guardar en la PC: el mismo chat, pero vive en el archivo (file://) y busca al celular solo.
+     * Así el navegador no muestra "No es seguro" y sobrevive a cambios de dirección del celular.
+     */
+    static String launcher(String icon, String label, String token, String ipsCsv, String pcName) {
+        String find = asset("find.html")
             .replace("{{ICON}}", icon)
             .replace("{{LABEL}}", label)
             .replace("{{TOKEN}}", token)
             .replace("{{IPS}}", ipsCsv);
+        return asset("pc.html")
+            .replace("{{CSS}}", asset("base.css"))
+            .replace("{{NAME}}", WebServer.esc(pcName))
+            .replace("{{TOKEN}}", token)
+            .replace("<!--{{FIND}}-->", find);
     }
 
     private Pages() {}

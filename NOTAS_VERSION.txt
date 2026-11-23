@@ -1,1 +1,1 @@
-Visor propio: tocá una foto o video del chat para verlo dentro de PasaArchivos (acercá con dos dedos o doble toque, deslizá para pasar). También corrige los mensajes de texto cortados e incluye la limpieza de mensajes.
+El acceso guardado en la PC (PasaArchivos.html) ahora es el chat completo: ya no salta a la dirección del celular, así que el navegador no muestra «No es seguro», y si el celular cambia de dirección lo vuelve a encontrar solo. Descargá el acceso de nuevo desde la página de la PC.

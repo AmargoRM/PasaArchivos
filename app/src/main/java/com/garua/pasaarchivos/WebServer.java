@@ -109,6 +109,15 @@ final class WebServer {
             String[] parts = line.split(" ");
             if (parts.length < 2) return;
             String method = parts[0];
+            if (method.equals("OPTIONS")) {
+                // El acceso guardado (file://) habla con el celular desde otro origen: el navegador pregunta antes.
+                out.write(("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\n"
+                        + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n"
+                        + "Access-Control-Allow-Private-Network: true\r\nAccess-Control-Max-Age: 600\r\n"
+                        + "Content-Length: 0\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                return;
+            }
             if (!method.equals("GET") && !method.equals("POST")) { text(out, 405, "Método no permitido."); out.flush(); return; }
             String path = parts[1], query = "";
             int q = path.indexOf('?');
@@ -173,7 +182,7 @@ final class WebServer {
         if (slash < 0) { redirect(out, "/k/" + pc.token + "/"); return; }
         if (sub.isEmpty()) { html(out, 200, Pages.chat(pc.name, pc.token)); return; }
         if (sub.equals("m")) { sendMessages(out, pc, query); return; }
-        if (sub.equals("acceso.html")) { sendLauncher(out, pc.token); return; }
+        if (sub.equals("acceso.html")) { sendLauncher(out, pc); return; }
         if (sub.equals("zip")) { sendZip(out, pc, query); return; }
         if (sub.startsWith("f/")) { sendFile(out, pc, parseId(sub.substring(2)), true); return; }
         if (sub.startsWith("i/")) { sendFile(out, pc, parseId(sub.substring(2)), false); return; }
@@ -318,7 +327,7 @@ final class WebServer {
             sb.append("Content-Type: ").append(it.mime == null ? "application/octet-stream" : it.mime).append("\r\n");
             if (it.size > 0) sb.append("Content-Length: ").append(it.size).append("\r\n");
             if (download) sb.append("Content-Disposition: attachment; filename*=UTF-8''").append(enc(it.name)).append("\r\n");
-            sb.append("Cache-Control: no-store\r\nConnection: close\r\n\r\n");
+            sb.append("Cache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n");
             out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
             copy(in, out);
             out.flush();
@@ -408,7 +417,7 @@ final class WebServer {
     private static void send(OutputStream out, int status, String type, String body) throws IOException {
         byte[] b = body.getBytes(StandardCharsets.UTF_8);
         out.write(("HTTP/1.1 " + status + " X\r\nContent-Type: " + type + "\r\nContent-Length: " + b.length
-                + "\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n")
+                + "\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Private-Network: true\r\nConnection: close\r\n\r\n")
                 .getBytes(StandardCharsets.UTF_8));
         out.write(b);
     }
@@ -449,7 +458,7 @@ final class WebServer {
 
     // ---------- acceso para la PC ----------
 
-    private void sendLauncher(OutputStream out, String tok) throws IOException {
+    private void sendLauncher(OutputStream out, Chat.Pc pc) throws IOException {
         String icon = "";
         try (InputStream in = ctx.getAssets().open("icon-192.png")) {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
@@ -458,7 +467,7 @@ final class WebServer {
         } catch (Exception ignored) {}
         StringBuilder ips = new StringBuilder();
         for (String ip : lanIps()) { if (ips.length() > 0) ips.append(','); ips.append('"').append(ip).append('"'); }
-        byte[] b = Pages.launcher(icon, label, tok, ips.toString()).getBytes(StandardCharsets.UTF_8);
+        byte[] b = Pages.launcher(icon, label, pc.token, ips.toString(), pc.name).getBytes(StandardCharsets.UTF_8);
         out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length
                 + "\r\nContent-Disposition: attachment; filename=\"PasaArchivos.html\""
                 + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));

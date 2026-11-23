@@ -1,0 +1,46 @@
+<style>
+#find{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#find .box{margin:0;width:100%}
+#find ul{text-align:left;color:var(--mut);font-size:14px;line-height:1.5;padding-left:20px;margin:14px 0 18px}
+#find .small{font-size:13px;margin-top:20px}
+#find input{font-size:16px;letter-spacing:0;width:100%;padding:10px;margin:8px 0 0;font-weight:500}
+.spin{width:34px;height:34px;margin:18px auto 4px;border:4px solid #d9efeb;border-top-color:var(--pri);border-radius:50%;animation:r .9s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+</style>
+<div id=find><div class=box><img src='{{ICON}}' alt=''><h2>PasaArchivos</h2>
+<p id=fmsg>Buscando el celular&hellip;</p><div class=spin id=fspin></div>
+<div id=fhelp style=display:none><ul>
+<li>Abrí <b>PasaArchivos</b> en el celular y revisá que diga que está activo.</li>
+<li>El celular y esta PC tienen que estar en la <b>misma red wifi</b>.</li>
+<li>Esta ventana sigue intentando sola cada pocos segundos.</li></ul>
+<button class='btn p' onclick='full()'>Buscar en toda la red</button>
+<p class=small>¿El celular muestra una dirección? Escribila aquí:</p>
+<form onsubmit='return man()'><input id=fa placeholder='192.168.0.101:8080' autocomplete=off></form></div></div></div>
+<script>
+var L='{{LABEL}}',T='{{TOKEN}}',IPS=[{{IPS}}],PORTS=[8080,8081,8082,8083],K='pasaarchivos-'+L,found=0,scanning=0;
+document.querySelector('link[rel=icon]').href='{{ICON}}';
+document.querySelectorAll('img[src="/icon-192.png"]').forEach(function(i){i.src='{{ICON}}'});
+$('savebtn').style.display='none';
+function probe(a,ms){return new Promise(function(r){var i=new Image(),d=0,t=setTimeout(function(){if(!d){d=1;i.src='';r(null)}},ms);
+ i.onload=function(){if(!d){d=1;clearTimeout(t);r(a)}};i.onerror=function(){if(!d){d=1;clearTimeout(t);r(null)}};
+ i.src='http://'+a+'/id/'+L+'.png?'+Date.now()})}
+function first(list,ms){return new Promise(function(res){var n=list.length;if(!n)return res(null);
+ list.forEach(function(a){probe(a,ms).then(function(v){if(v){res(v);res=function(){}}else if(--n===0)res(null)})})})}
+function saved(){try{return localStorage.getItem(K)}catch(e){return null}}
+function use(a){try{localStorage.setItem(K,a)}catch(e){}var nb='http://'+a+'/k/'+T+'/';if(B!==nb){B=nb;start()}found=1;$('find').style.display='none'}
+function quick(){var c=[],s=saved();if(s)c.push(s);
+ PORTS.forEach(function(p){c.push(L+'.local:'+p)});IPS.forEach(function(ip){PORTS.forEach(function(p){c.push(ip+':'+p)})});
+ return first(c.filter(function(x,i){return c.indexOf(x)===i}),2500)}
+function nets(){var n={},s=saved();IPS.concat(s?[s.split(':')[0]]:[]).forEach(function(ip){
+ if(/^\d+\.\d+\.\d+\.\d+$/.test(ip))n[ip.split('.').slice(0,3).join('.')]=1});return Object.keys(n)}
+function scan(){var all=[];nets().forEach(function(n){for(var i=1;i<255;i++)all.push(n+'.'+i+':8080')});
+ var k=0;function batch(){if(k>=all.length)return Promise.resolve(null);var b=all.slice(k,k+60);k+=60;
+ return first(b,1800).then(function(v){return v||batch()})}return batch()}
+function fail(){$('fspin').style.display='none';$('fmsg').innerHTML='<b>No encuentro el celular todavía.</b>';$('fhelp').style.display='block'}
+function full(){if(scanning)return;scanning=1;$('fmsg').textContent='Buscando en toda la red…';$('fspin').style.display='block';
+ quick().then(function(v){return v||scan()}).then(function(v){scanning=0;if(v)use(v);else fail()})}
+function man(){var v=$('fa').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');if(v){if(v.indexOf(':')<0)v+=':8080';
+ probe(v,3000).then(function(ok){if(ok)use(ok);else location.href='http://'+v+'/'})}return false}
+window.lost=function(){if(!scanning)quick().then(function(v){if(v)use(v)})};
+full();setInterval(function(){if(!found&&!scanning)quick().then(function(v){if(v)use(v)})},4000);
+</script>

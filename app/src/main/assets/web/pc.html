@@ -62,8 +62,8 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 #dlg .x{margin-top:18px;display:flex;gap:10px;justify-content:flex-end}
 </style>
 <div class=top><div class=av>&#128241;</div><div class=t><b>Celular</b><span id=st><i class=dot></i>Conectado · esta PC es «{{NAME}}»</span></div>
-<button class=btn onclick="dlg(1)">Guardar acceso</button></div>
-<div id=newbar><span id=newtxt></span><a class='btn p' id=newzip href='zip?nuevos=1'>&darr; Descargar todo (.zip)</a></div>
+<button class=btn id=savebtn onclick="dlg(1)">Guardar acceso</button></div>
+<div id=newbar><span id=newtxt></span><a class='btn p' id=newzip href='#'>&darr; Descargar todo (.zip)</a></div>
 <div id=feed><div class=col id=col></div></div>
 <div class=bar><div class=in>
 <button class=ib title="Enviar archivos al celular" onclick="$('pick').click()">&#128206;</button><input type=file id=pick multiple hidden>
@@ -79,10 +79,10 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 <li>Mové <b>PasaArchivos.html</b> de Descargas a un lugar fijo, por ejemplo el Escritorio.</li>
 <li>Cada vez que lo necesités, abrilo con doble clic. Si lo querés en favoritos, abrilo y presioná <b>Ctrl + D</b>.</li></ol>
 <div class=w>Si tenés accesos viejos de PasaFotos (instalado como aplicación o en favoritos), borralos: ya no funcionan.</div>
-<div class=x><button class=btn onclick="dlg(0)">Cerrar</button><a class='btn p' href=acceso.html download=PasaArchivos.html>Descargar acceso</a></div></div></div>
+<div class=x><button class=btn onclick="dlg(0)">Cerrar</button><a class='btn p' id=accbtn href='#' download=PasaArchivos.html>Descargar acceso</a></div></div></div>
 <script>
 try{localStorage.setItem('pa-tok','{{TOKEN}}')}catch(e){}
-var lastDay='',M=[],last=0,gen=null,miss=0,busy=0,queue=[],lbI=-1,col=document.getElementById('col'),feed=document.getElementById('feed');
+var B=null,lastDay='',M=[],last=0,gen=null,miss=0,busy=0,queue=[],lbI=-1,col=document.getElementById('col'),feed=document.getElementById('feed');
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function size(b){if(!(b>0))return'';if(b<1024)return b+' B';if(b<1048576)return Math.round(b/1024)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(2)+' GB'}
@@ -96,9 +96,9 @@ function bottom(){feed.scrollTop=feed.scrollHeight}
 function bubble(m){
  var w=document.createElement('div');w.className='msg '+(m.me?'me':'it');w.id='m'+m.id;var h='<div class=bub>';
  if(m.x!=null)h+='<div class=txt>'+linkify(m.x)+'</div>';
- else if(m.k=='img'||m.k=='vid'){h+='<span class=ph onclick="lbOpen('+m.id+')"><img loading=lazy src="t/'+m.id+'" alt="" onerror="this.style.minHeight=\'60px\'">'+(m.k=='vid'?'<span class=play>&#9654;</span>':'')+'</span>'
-   +'<div class=cap><div class=fn><b title="'+esc(m.n)+'">'+esc(m.n)+'</b><span>'+size(m.s)+'</span></div>'+(m.me?'':'<a class=dl title=Descargar href="f/'+m.id+'" onclick="got('+m.id+')">&darr;</a>')+'</div>'}
- else h+='<div class=file><div class=ext>'+esc(ext(m.n))+'</div><div class=fn><b title="'+esc(m.n)+'">'+esc(m.n)+'</b><span>'+size(m.s)+'</span></div>'+(m.me?'':'<a class=dl title=Descargar href="f/'+m.id+'" onclick="got('+m.id+')">&darr;</a>')+'</div>';
+ else if(m.k=='img'||m.k=='vid'){h+='<span class=ph onclick="lbOpen('+m.id+')"><img loading=lazy src="'+B+'t/'+m.id+'" alt="" onerror="this.style.minHeight=\'60px\'">'+(m.k=='vid'?'<span class=play>&#9654;</span>':'')+'</span>'
+   +'<div class=cap><div class=fn><b title="'+esc(m.n)+'">'+esc(m.n)+'</b><span>'+size(m.s)+'</span></div>'+(m.me?'':'<a class=dl title=Descargar href="'+B+'f/'+m.id+'" onclick="got('+m.id+')">&darr;</a>')+'</div>'}
+ else h+='<div class=file><div class=ext>'+esc(ext(m.n))+'</div><div class=fn><b title="'+esc(m.n)+'">'+esc(m.n)+'</b><span>'+size(m.s)+'</span></div>'+(m.me?'':'<a class=dl title=Descargar href="'+B+'f/'+m.id+'" onclick="got('+m.id+')">&darr;</a>')+'</div>';
  h+='<div class=meta>'+hm(m.t)+(m.me?' &middot; <span class=ok>&#10003; en el celular</span>':(m.x==null&&m.d?' &middot; <span class=ok>&#10003; descargado</span>':''))+'</div></div>';
  w.innerHTML=h;return w}
 function add(list){var stick=near()||!M.length;
@@ -111,24 +111,26 @@ function add(list){var stick=near()||!M.length;
 function newbar(){var n=M.filter(function(m){return!m.me&&m.x==null&&!m.d}).length;$('newbar').style.display=n>1?'flex':'none';$('newtxt').textContent=n+' archivos del celular sin descargar'}
 function got(id){setTimeout(function(){M.forEach(function(m){if(m.id==id)m.d=true});var e=$('m'+id);if(e){var m=M.filter(function(x){return x.id==id})[0];e.replaceWith(bubble(m))}newbar()},700)}
 $('newzip').onclick=function(){setTimeout(function(){M.forEach(function(m){if(!m.me&&m.x==null&&!m.d){m.d=true;var e=$('m'+m.id);if(e)e.replaceWith(bubble(m))}});newbar()},900)};
-function poll(){fetch('m?after='+last,{cache:'no-store'}).then(function(r){if(r.status==403){location.replace('/');throw 1}if(!r.ok)throw 0;return r.json()}).then(function(j){
- miss=0;$('lost').style.display='none';if(gen!==null&&j.gen!==gen){gen=j.gen;M=[];last=0;lastDay='';col.innerHTML='';poll();return}gen=j.gen;add(j.msgs)}).catch(function(e){if(e===1)return;miss++;if(miss>=2)$('lost').style.display='block'})}
-poll();setInterval(poll,2000);
+function poll(){fetch(B+'m?after='+last,{cache:'no-store'}).then(function(r){if(r.status==403){bad();throw 1}if(!r.ok)throw 0;return r.json()}).then(function(j){
+ miss=0;$('lost').style.display='none';if(gen!==null&&j.gen!==gen){gen=j.gen;M=[];last=0;lastDay='';col.innerHTML='';poll();return}gen=j.gen;add(j.msgs)}).catch(function(e){if(e===1)return;miss++;if(miss>=2)$('lost').style.display='block';if(miss>=4&&window.lost)window.lost()})}
+function start(){$('newzip').href=B+'zip?nuevos=1';$('accbtn').href=B+'acceso.html';poll();if(!window._iv)window._iv=setInterval(poll,2000)}
+function bad(){location.replace((B||'/').replace(/k\/[^/]+\/$/,''))}
+/*{{BOOT}}*/
 function lbList(){return M.filter(function(m){return m.k=='img'||m.k=='vid'})}
-function lbOpen(id){var L=lbList();for(var i=0;i<L.length;i++)if(L[i].id==id)lbI=i;var m=L[lbI];$('lbn').textContent=m.n;$('lbd').href='f/'+m.id;$('lbd').onclick=function(){got(m.id)};
- $('lbc').innerHTML=m.k=='vid'?'<video src="i/'+m.id+'" controls autoplay></video>':'<img src="i/'+m.id+'" alt="">';$('lb').className='on'}
+function lbOpen(id){var L=lbList();for(var i=0;i<L.length;i++)if(L[i].id==id)lbI=i;var m=L[lbI];$('lbn').textContent=m.n;$('lbd').href=B+'f/'+m.id;$('lbd').onclick=function(){got(m.id)};
+ $('lbc').innerHTML=m.k=='vid'?'<video src="'+B+'i/'+m.id+'" controls autoplay></video>':'<img src="'+B+'i/'+m.id+'" alt="">';$('lb').className='on'}
 function lbClose(){$('lb').className='';$('lbc').innerHTML='';lbI=-1}
 function lbGo(d){var L=lbList();if(lbI<0||!L.length)return;lbOpen(L[(lbI+d+L.length)%L.length].id)}
 document.addEventListener('keydown',function(e){if(lbI<0)return;if(e.key=='Escape')lbClose();if(e.key=='ArrowRight')lbGo(1);if(e.key=='ArrowLeft')lbGo(-1)});
 var tx=$('tx');tx.addEventListener('input',function(){tx.style.height='auto';tx.style.height=Math.min(tx.scrollHeight,140)+'px'});
 tx.addEventListener('keydown',function(e){if(e.key=='Enter'&&!e.shiftKey){e.preventDefault();sendText()}});
 function sendText(){var t=tx.value.trim();if(!t)return;tx.value='';tx.style.height='auto';
- fetch('tx',{method:'POST',body:t}).then(function(r){if(!r.ok)throw 0;poll()}).catch(function(){tx.value=t;alert('No se pudo enviar. Revisá la conexión con el celular.')})}
+ fetch(B+'tx',{method:'POST',body:t,headers:{'Content-Type':'text/plain;charset=UTF-8'}}).then(function(r){if(!r.ok)throw 0;poll()}).catch(function(){tx.value=t;alert('No se pudo enviar. Revisá la conexión con el celular.')})}
 function upload(fl){for(var i=0;i<fl.length;i++){var f=fl[i],w=document.createElement('div');w.className='msg me';
  w.innerHTML='<div class=bub><div class=file><div class=ext>'+esc(ext(f.name))+'</div><div class=fn><b>'+esc(f.name)+'</b><span class=st>En espera</span><div class=pb><i></i></div></div></div></div>';
  if(!M.length&&!queue.length&&!busy)col.innerHTML='';col.appendChild(w);queue.push({f:f,w:w})}bottom();if(!busy)next()}
 function next(){var j=queue.shift();if(!j){busy=0;return}busy=1;var st=j.w.querySelector('.st'),bar=j.w.querySelector('.pb i'),x=new XMLHttpRequest();
- x.open('POST','up?n='+encodeURIComponent(j.f.name));
+ x.open('POST',B+'up?n='+encodeURIComponent(j.f.name));x.setRequestHeader('Content-Type','text/plain');
  x.upload.onprogress=function(e){if(e.lengthComputable){var p=Math.round(e.loaded/e.total*100);bar.style.width=p+'%';st.textContent='Enviando '+p+' %'}};
  x.onload=function(){var ok=x.status==200,m='';try{var r=JSON.parse(x.responseText);ok=ok&&r.ok;m=r.error||''}catch(e){}
   if(ok){j.w.remove();poll()}else{st.className='err2';st.textContent='No se envió'+(m?': '+m:'');j.w.querySelector('.pb').remove()}next()};
@@ -142,4 +144,4 @@ document.addEventListener('dragleave',function(e){if(!hasFiles(e))return;if(--dc
 document.addEventListener('dragover',function(e){if(hasFiles(e))e.preventDefault()});
 document.addEventListener('drop',function(e){if(!hasFiles(e))return;e.preventDefault();dc=0;over.style.display='none';upload(e.dataTransfer.files)});
 document.addEventListener('paste',function(e){if(e.clipboardData&&e.clipboardData.files&&e.clipboardData.files.length){e.preventDefault();upload(e.clipboardData.files)}});
-</script></html>
+</script><!--{{FIND}}--></html>
