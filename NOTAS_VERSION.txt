@@ -1,1 +1,1 @@
-Primera versión con el nombre PasaArchivos: pestañas Enviar y Recibido, miniaturas, selección múltiple en la PC y aviso automático de actualizaciones.
+Primera versión de PasaArchivos: un chat con cada computadora para pasar archivos y mensajes en los dos sentidos, con acceso guardado por computadora y aviso automático de actualizaciones.
