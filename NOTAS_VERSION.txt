@@ -1,1 +1,1 @@
-Instalar más simple: la página de la PC trae el botón «Instalar como app» y ya no muestra la barra roja. Si la PC reconoce el nombre fijo del celular, la página se pasa a ese nombre, así la app instalada sigue funcionando aunque cambie la dirección.
+Compartir más rápido: cada computadora aparece arriba en el menú Compartir de Android (desde la galería o cualquier app). Tocala y el archivo va directo a esa computadora.

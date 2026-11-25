@@ -186,13 +186,32 @@ public class MainActivity extends Activity {
             Uri u = Build.VERSION.SDK_INT >= 33 ? i.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class) : legacyUri(i);
             if (u != null) got.add(u);
             String t = i.getStringExtra(Intent.EXTRA_TEXT);
-            if (u == null && t != null) { shareText(t); i.setAction(null); return; }
+            if (u == null && t != null) {
+                String sc = Build.VERSION.SDK_INT >= 29 ? i.getStringExtra(Intent.EXTRA_SHORTCUT_ID) : null;
+                i.setAction(null);
+                if (sc != null && sc.startsWith("pc_") && Chat.byId(sc.substring(3)) != null) {
+                    Chat.addText(sc.substring(3), false, t); showChat(sc.substring(3)); return;
+                }
+                shareText(t);
+                return;
+            }
         } else if (Intent.ACTION_SEND_MULTIPLE.equals(i.getAction())) {
             ArrayList<Uri> us = Build.VERSION.SDK_INT >= 33 ? i.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri.class) : legacyUris(i);
             if (us != null) for (Uri u : us) if (u != null) got.add(u);
         }
+        String direct = Build.VERSION.SDK_INT >= 29 ? i.getStringExtra(Intent.EXTRA_SHORTCUT_ID) : null;
         i.setAction(null);
         if (got.isEmpty()) return;
+        if (direct != null && direct.startsWith("pc_") && Chat.byId(direct.substring(3)) != null) {
+            String id = direct.substring(3);
+            showChat(id);
+            for (Uri u : got) sendUri(id, u);
+            refresh(true);
+            scrollDown();
+            Toast.makeText(this, got.size() == 1 ? "Listo para " + Chat.byId(id).name : got.size() + " archivos listos para " + Chat.byId(id).name,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
         List<Chat.Pc> pcs = Chat.pcs();
         if (currentPc != null && chat.getVisibility() == View.VISIBLE) { for (Uri u : got) sendUri(currentPc, u); return; }
         if (pcs.size() == 1) { showChat(pcs.get(0).id); for (Uri u : got) sendUri(pcs.get(0).id, u); return; }
@@ -989,8 +1008,40 @@ public class MainActivity extends Activity {
         else refreshHome(force, server);
     }
 
+    private String shortcutSig = "";
+
+    /** Publica cada computadora como destino directo del menú Compartir (como los contactos de WhatsApp). */
+    private void publishShortcuts(List<Chat.Pc> pcs) {
+        StringBuilder sig = new StringBuilder();
+        for (Chat.Pc p : pcs) sig.append(p.id).append('=').append(p.name).append(';');
+        if (sig.toString().equals(shortcutSig)) return;
+        shortcutSig = sig.toString();
+        try {
+            android.content.pm.ShortcutManager sm = getSystemService(android.content.pm.ShortcutManager.class);
+            if (sm == null) return;
+            List<android.content.pm.ShortcutInfo> list = new ArrayList<>();
+            java.util.Set<String> cats = java.util.Collections.singleton("com.garua.pasaarchivos.category.PC");
+            int max = Math.min(pcs.size(), Math.max(1, sm.getMaxShortcutCountPerActivity() - 1));
+            for (int k = 0; k < max; k++) {
+                Chat.Pc p = pcs.get(k);
+                Intent open = new Intent(Intent.ACTION_VIEW, null, this, MainActivity.class).putExtra(EXTRA_PC, p.id);
+                android.content.pm.ShortcutInfo.Builder b = new android.content.pm.ShortcutInfo.Builder(this, "pc_" + p.id)
+                        .setShortLabel(p.name)
+                        .setLongLabel("Enviar a " + p.name)
+                        .setIcon(android.graphics.drawable.Icon.createWithResource(this, R.mipmap.ic_launcher))
+                        .setCategories(cats)
+                        .setIntent(open)
+                        .setRank(k);
+                if (Build.VERSION.SDK_INT >= 30) b.setLongLived(true);
+                list.add(b.build());
+            }
+            sm.setDynamicShortcuts(list);
+        } catch (Exception ignored) {}
+    }
+
     private void refreshHome(boolean force, WebServer server) {
         List<Chat.Pc> pcs = Chat.pcs();
+        publishShortcuts(pcs);
         StringBuilder sig = new StringBuilder("h").append(Chat.version());
         for (Chat.Pc p : pcs) sig.append(p.online() ? '1' : '0');
         if (force || !sig.toString().equals(shownSig)) {
