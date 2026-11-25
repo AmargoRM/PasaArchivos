@@ -18,16 +18,18 @@
 <form onsubmit='return man()'><input id=fa placeholder='192.168.0.101:8080' autocomplete=off></form></div></div></div>
 <script>
 var L='{{LABEL}}',T='{{TOKEN}}',IPS=[{{IPS}}],PORTS=[8080,8081,8082,8083],K='pasaarchivos-'+L,found=0,scanning=0;
-document.querySelector('link[rel=icon]').href='{{ICON}}';
-document.querySelectorAll('img[src="/icon-192.png"]').forEach(function(i){i.src='{{ICON}}'});
-$('savebtn').style.display='none';
+var HTTP=location.protocol!='file:';
+if(!HTTP){document.querySelector('link[rel=icon]').href='{{ICON}}';
+ document.querySelectorAll('img[src="/icon-192.png"]').forEach(function(i){i.src='{{ICON}}'});
+ $('savebtn').style.display='none'}
 function probe(a,ms){return new Promise(function(r){var i=new Image(),d=0,t=setTimeout(function(){if(!d){d=1;i.src='';r(null)}},ms);
  i.onload=function(){if(!d){d=1;clearTimeout(t);r(a)}};i.onerror=function(){if(!d){d=1;clearTimeout(t);r(null)}};
  i.src='http://'+a+'/id/'+L+'.png?'+Date.now()})}
 function first(list,ms){return new Promise(function(res){var n=list.length;if(!n)return res(null);
  list.forEach(function(a){probe(a,ms).then(function(v){if(v){res(v);res=function(){}}else if(--n===0)res(null)})})})}
 function saved(){try{return localStorage.getItem(K)}catch(e){return null}}
-function use(a){try{localStorage.setItem(K,a)}catch(e){}var nb='http://'+a+'/k/'+T+'/';if(B!==nb){B=nb;start()}found=1;$('find').style.display='none'}
+function use(a){if(HTTP){if(a!==location.host)location.replace('http://'+a+'/k/'+T+'/');else{$('find').style.display='none';scanning=0}return}
+ try{localStorage.setItem(K,a)}catch(e){}var nb='http://'+a+'/k/'+T+'/';if(B!==nb){B=nb;start()}found=1;$('find').style.display='none'}
 function quick(){var c=[],s=saved();if(s)c.push(s);
  PORTS.forEach(function(p){c.push(L+'.local:'+p)});IPS.forEach(function(ip){PORTS.forEach(function(p){c.push(ip+':'+p)})});
  return first(c.filter(function(x,i){return c.indexOf(x)===i}),2500)}
@@ -41,6 +43,10 @@ function full(){if(scanning)return;scanning=1;$('fmsg').textContent='Buscando en
  quick().then(function(v){return v||scan()}).then(function(v){scanning=0;if(v)use(v);else fail()})}
 function man(){var v=$('fa').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');if(v){if(v.indexOf(':')<0)v+=':8080';
  probe(v,3000).then(function(ok){if(ok)use(ok);else location.href='http://'+v+'/'})}return false}
-window.lost=function(){if(!scanning)quick().then(function(v){if(v)use(v)})};
-full();setInterval(function(){if(!found&&!scanning)quick().then(function(v){if(v)use(v)})},4000);
+function fullHttp(){}
+window.lost=function(){
+ if(HTTP){if(scanning)return;$('find').style.display='flex';$('fmsg').textContent='Se perdió el celular. Buscándolo en la red\u2026';full();return}
+ if(!scanning)quick().then(function(v){if(v)use(v)})};
+if(HTTP){$('find').style.display='none';found=1;B='';start()}
+else{full();setInterval(function(){if(!found&&!scanning)quick().then(function(v){if(v)use(v)})},4000)}
 </script>

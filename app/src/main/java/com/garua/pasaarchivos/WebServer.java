@@ -166,6 +166,12 @@ final class WebServer {
         }
         if (byCode) {
             if (post) { text(out, 405, "Método no permitido."); return; }
+            List<Chat.Pc> known = Chat.pcs();
+            if (sub.startsWith("usar/")) {
+                Chat.Pc same = Chat.byId(sub.substring(5));
+                if (same != null) { same.lastSeen = System.currentTimeMillis(); redirect(out, "/k/" + same.token + "/"); return; }
+            }
+            if (sub.isEmpty() && !known.isEmpty()) { html(out, 200, Pages.choose(code, known)); return; }
             Chat.Pc fresh = Chat.newPc(pcName(ua));
             fresh.lastSeen = System.currentTimeMillis();
             redirect(out, "/k/" + fresh.token + "/");
@@ -180,7 +186,7 @@ final class WebServer {
             return;
         }
         if (slash < 0) { redirect(out, "/k/" + pc.token + "/"); return; }
-        if (sub.isEmpty()) { html(out, 200, Pages.chat(pc.name, pc.token)); return; }
+        if (sub.isEmpty()) { html(out, 200, Pages.chat(pc.name, pc.token, label, ipsCsv())); return; }
         if (sub.equals("m")) { sendMessages(out, pc, query); return; }
         if (sub.equals("acceso.html")) { sendLauncher(out, pc); return; }
         if (sub.equals("zip")) { sendZip(out, pc, query); return; }
@@ -457,6 +463,12 @@ final class WebServer {
     }
 
     // ---------- acceso para la PC ----------
+
+    private static String ipsCsv() {
+        StringBuilder ips = new StringBuilder();
+        for (String ip : lanIps()) { if (ips.length() > 0) ips.append(','); ips.append('"').append(ip).append('"'); }
+        return ips.toString();
+    }
 
     private void sendLauncher(OutputStream out, Chat.Pc pc) throws IOException {
         String icon = "";

@@ -1,1 +1,1 @@
-El acceso PasaArchivos.html trae el botón «Anclar como app» para abrirlo en su propia ventana desde la barra de tareas. La página con números ahora avisa que no se debe anclar, porque deja de funcionar cuando cambia la dirección del celular.
+Al volver a entrar con el código, PasaArchivos pregunta si es una computadora que ya conectaste: elegila y seguís en el mismo chat. Si la página está abierta y el celular cambia de dirección, lo busca y se reconecta solo.

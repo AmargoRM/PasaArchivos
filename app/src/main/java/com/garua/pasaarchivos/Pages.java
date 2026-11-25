@@ -36,13 +36,38 @@ final class Pages {
              + "<title>" + WebServer.APP + "</title><style>" + asset("base.css") + extraCss + "</style>";
     }
 
-    /** Chat servido por el celular (dirección http). */
-    static String chat(String pcName, String token) {
+    /** Chat servido por el celular (dirección http). Si el celular cambia de dirección, lo busca y se reconecta. */
+    static String chat(String pcName, String token, String label, String ipsCsv) {
+        String find = asset("find.html")
+            .replace("{{ICON}}", "/icon-192.png")
+            .replace("{{LABEL}}", label)
+            .replace("{{TOKEN}}", token)
+            .replace("{{IPS}}", ipsCsv);
         return asset("pc.html")
             .replace("{{CSS}}", asset("base.css"))
             .replace("{{NAME}}", WebServer.esc(pcName))
             .replace("{{TOKEN}}", token)
-            .replace("/*{{BOOT}}*/", "B='';start();");
+            .replace("/*{{BOOT}}*/", "")
+            .replace("<!--{{FIND}}-->", find);
+    }
+
+    /** Tras escribir el código: ¿es una computadora ya conocida (mismo chat) o una nueva? */
+    static String choose(String code, java.util.List<Chat.Pc> pcs) {
+        StringBuilder rows = new StringBuilder();
+        for (Chat.Pc p : pcs) {
+            rows.append("<a class=opt href='/c/").append(code).append("/usar/").append(p.id).append("'><span class=ic>&#128187;</span><span><b>")
+                .append(WebServer.esc(p.name)).append("</b><small>Seguir en el mismo chat, con su historial</small></span></a>");
+        }
+        return "<!doctype html><html lang=es>" + head(".box{max-width:460px;text-align:left}.box h2{text-align:center}"
+                + ".box>p{text-align:center}.opt{display:flex;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);"
+                + "border-radius:12px;margin:8px 0;text-decoration:none;color:var(--ink)}.opt:hover{border-color:var(--pri);background:var(--soft)}"
+                + ".opt .ic{font-size:22px}.opt b{display:block;font-size:15px}.opt small{color:var(--mut);font-size:12.5px}"
+                + ".new{border-style:dashed}")
+            + "<div class=box><h2>¿Qué computadora es esta?</h2>"
+            + "<p>Si ya la habías conectado antes (por ejemplo, el celular cambió de dirección), elegila para seguir en el mismo chat.</p>"
+            + rows
+            + "<a class='opt new' href='/c/" + code + "/nueva'><span class=ic>&#10133;</span><span><b>Es una computadora nueva</b>"
+            + "<small>Empieza un chat aparte</small></span></a></div></html>";
     }
 
     /**
