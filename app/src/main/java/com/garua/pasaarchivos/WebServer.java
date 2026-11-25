@@ -188,6 +188,15 @@ final class WebServer {
         if (slash < 0) { redirect(out, "/k/" + pc.token + "/"); return; }
         if (sub.isEmpty()) { html(out, 200, Pages.chat(pc.name, pc.token, label, ipsCsv())); return; }
         if (sub.equals("m")) { sendMessages(out, pc, query); return; }
+        if (sub.equals("manifest.json")) {
+            String base = "/k/" + pc.token + "/";
+            send(out, 200, "application/manifest+json; charset=utf-8",
+                "{\"name\":\"PasaArchivos\",\"short_name\":\"PasaArchivos\",\"start_url\":\"" + base + "\",\"scope\":\"" + base
+                + "\",\"display\":\"standalone\",\"background_color\":\"#ece7dc\",\"theme_color\":\"#0f766e\","
+                + "\"icons\":[{\"src\":\"/icon-192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\"},"
+                + "{\"src\":\"/icon-512.png\",\"sizes\":\"512x512\",\"type\":\"image/png\"}]}");
+            return;
+        }
         if (sub.equals("acceso.html")) { sendLauncher(out, pc); return; }
         if (sub.equals("zip")) { sendZip(out, pc, query); return; }
         if (sub.startsWith("f/")) { sendFile(out, pc, parseId(sub.substring(2)), true); return; }

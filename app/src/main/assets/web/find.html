@@ -47,6 +47,8 @@ function fullHttp(){}
 window.lost=function(){
  if(HTTP){if(scanning)return;$('find').style.display='flex';$('fmsg').textContent='Se perdió el celular. Buscándolo en la red\u2026';full();return}
  if(!scanning)quick().then(function(v){if(v)use(v)})};
-if(HTTP){$('find').style.display='none';found=1;B='';start()}
+if(HTTP){$('find').style.display='none';found=1;B='';start();
+ // Si se entró por número, pasar al nombre fijo del celular: lo que se instale o guarde sigue sirviendo aunque cambie la dirección.
+ if(/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)){var nm=L+'.local:'+(location.port||'80');probe(nm,2500).then(function(ok){if(ok)location.replace('http://'+nm+location.pathname)})}}
 else{full();setInterval(function(){if(!found&&!scanning)quick().then(function(v){if(v)use(v)})},4000)}
 </script>

@@ -1,5 +1,5 @@
 <!doctype html><html lang=es><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
-<meta name=theme-color content='#0f766e'><link rel=icon href=/icon-192.png><title>PasaArchivos · {{NAME}}</title>
+<meta name=theme-color content='#0f766e'><link rel=icon href=/icon-192.png><link rel=manifest href=manifest.json><title>PasaArchivos · {{NAME}}</title>
 <style>{{CSS}}
 html,body{height:100%}
 body{display:flex;flex-direction:column;background:#ece7dc}
@@ -62,8 +62,7 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 #dlg .x{margin-top:18px;display:flex;gap:10px;justify-content:flex-end}
 </style>
 <div class=top><div class=av>&#128241;</div><div class=t><b>Celular</b><span id=st><i class=dot></i>Conectado · esta PC es «{{NAME}}»</span></div>
-<button class=btn id=savebtn onclick="dlg(1)">Guardar acceso</button><button class=btn id=pinbtn style=display:none onclick="pin(1)">Anclar como app</button></div>
-<div id=warnbar style="display:none;align-items:center;justify-content:center;gap:10px;font-size:13px;padding:8px 12px;background:#fde8e6;border-bottom:1px solid #f3b6ae;flex:none;text-align:center">No anclés ni guardés esta página: su dirección cambia cuando la wifi le da otra al celular. <button class='btn p' onclick="dlg(1)">Guardar el acceso que no falla</button></div>
+<button class=btn id=savebtn onclick="dlg(1)">Instalar como app</button><button class=btn id=pinbtn style=display:none onclick="pin(1)">Anclar como app</button></div>
 <div id=newbar><span id=newtxt></span><a class='btn p' id=newzip href='#'>&darr; Descargar todo (.zip)</a></div>
 <div id=feed><div class=col id=col></div></div>
 <div class=bar><div class=in>
@@ -83,13 +82,15 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 <li>Clic derecho sobre el acceso nuevo &rarr; <b>Mostrar más opciones</b> &rarr; <b>Anclar a la barra de tareas</b>. Después podés borrar el del Escritorio.</li></ol>
 <p style="color:var(--mut);font-size:12.5px">Importante: no muevas ni renombres PasaArchivos.html después de esto; el acceso directo apunta a donde está ahora (<span id=pinpath></span>). Si Windows dice que no encuentra el navegador, el programa está en otra carpeta: avisá y se ajusta.</p>
 <div style="margin-top:14px;text-align:right"><button class=btn onclick="pin(0)">Cerrar</button></div></div></div>
-<div id=dlg onclick="if(event.target==this)dlg(0)"><div class=in><h4>Guardar acceso en esta PC</h4>
-<p>El acceso es un archivo pequeño (<b>PasaArchivos.html</b>) que abre esta conversación y busca al celular solo. Si el celular todavía no está listo, espera y se conecta en cuanto aparezca.</p><ol>
-<li>Tocá <b>Descargar acceso</b>.</li>
-<li>Mové <b>PasaArchivos.html</b> de Descargas a un lugar fijo, por ejemplo el Escritorio.</li>
-<li>Cada vez que lo necesités, abrilo con doble clic. Si lo querés en favoritos, abrilo y presioná <b>Ctrl + D</b>.</li></ol>
-<div class=w>No anclés ni instalés como aplicación la página con números (http://192.168&hellip;): deja de funcionar cuando la wifi le cambia la dirección al celular. Anclá <b>PasaArchivos.html</b>: al abrirlo trae el botón <b>Anclar como app</b>. Si ya habías anclado la otra, desinstalala desde su menú &#8942;.</div>
-<div class=x><button class=btn onclick="dlg(0)">Cerrar</button><a class='btn p' id=accbtn href='#' download=PasaArchivos.html>Descargar acceso</a></div></div></div>
+<div id=dlg onclick="if(event.target==this)dlg(0)"><div class=in><h4>Instalar PasaArchivos en esta PC</h4>
+<p><b>En Chrome:</b> menú &#8942; (arriba a la derecha) &rarr; <b>Transmitir, guardar y compartir</b> &rarr; <b>Instalar página como app</b> &rarr; <b>Instalar</b>.<br>
+<b>En Edge:</b> menú &#8943; &rarr; <b>Aplicaciones</b> &rarr; <b>Instalar este sitio como aplicación</b>.</p>
+<p>Después, clic derecho sobre su ícono en la barra de tareas &rarr; <b>Anclar a la barra de tareas</b>.</p>
+<p style="color:var(--mut);font-size:13px">Arriba vas a ver «No es seguro»: Chrome lo muestra en toda conexión local sin certificado. No es un error; los archivos viajan solo dentro de tu wifi. Si un día la app no abre, es que el celular no está en la wifi o PasaArchivos está detenido.</p>
+<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--pri);font-weight:600">Prefiero sin el aviso «No es seguro»</summary>
+<p>Descargá el acceso en archivo, abrilo con doble clic y usá su botón <b>Anclar como app</b>. Requiere crear un acceso directo de Windows (te guía paso a paso).</p>
+<a class='btn' id=accbtn href='#' download=PasaArchivos.html>Descargar acceso en archivo</a></details>
+<div class=x><button class='btn p' onclick="dlg(0)">Listo</button></div></div></div>
 <script>
 try{localStorage.setItem('pa-tok','{{TOKEN}}')}catch(e){}
 var B=null,lastDay='',M=[],last=0,gen=null,miss=0,busy=0,queue=[],lbI=-1,col=document.getElementById('col'),feed=document.getElementById('feed');
@@ -127,7 +128,7 @@ function pin(o){$('pind').style.display=o?'flex':'none';if(!o)return;var path=de
  var edge=navigator.userAgent.indexOf('Edg/')>=0,exe=edge?'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe':'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
  $('pincmd').value='"'+exe+'" --app="'+location.href.split('#')[0]+'"';$('pinpath').textContent=path}
 function cp(){var i=$('pincmd');i.select();try{navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}}
-function start(){if(location.protocol=='file:')$('pinbtn').style.display='';else $('warnbar').style.display='flex';$('newzip').href=B+'zip?nuevos=1';$('accbtn').href=B+'acceso.html';poll();if(!window._iv)window._iv=setInterval(poll,2000)}
+function start(){if(location.protocol=='file:')$('pinbtn').style.display='';$('newzip').href=B+'zip?nuevos=1';$('accbtn').href=B+'acceso.html';poll();if(!window._iv)window._iv=setInterval(poll,2000)}
 function bad(){location.replace((B||'/').replace(/k\/[^/]+\/$/,''))}
 /*{{BOOT}}*/
 function lbList(){return M.filter(function(m){return m.k=='img'||m.k=='vid'})}

@@ -1,1 +1,1 @@
-Al volver a entrar con el código, PasaArchivos pregunta si es una computadora que ya conectaste: elegila y seguís en el mismo chat. Si la página está abierta y el celular cambia de dirección, lo busca y se reconecta solo.
+Instalar más simple: la página de la PC trae el botón «Instalar como app» y ya no muestra la barra roja. Si la PC reconoce el nombre fijo del celular, la página se pasa a ese nombre, así la app instalada sigue funcionando aunque cambie la dirección.
