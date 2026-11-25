@@ -62,7 +62,8 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 #dlg .x{margin-top:18px;display:flex;gap:10px;justify-content:flex-end}
 </style>
 <div class=top><div class=av>&#128241;</div><div class=t><b>Celular</b><span id=st><i class=dot></i>Conectado · esta PC es «{{NAME}}»</span></div>
-<button class=btn id=savebtn onclick="dlg(1)">Guardar acceso</button></div>
+<button class=btn id=savebtn onclick="dlg(1)">Guardar acceso</button><button class=btn id=pinbtn style=display:none onclick="pin(1)">Anclar como app</button></div>
+<div id=warnbar style="display:none;align-items:center;justify-content:center;gap:10px;font-size:13px;padding:8px 12px;background:#fde8e6;border-bottom:1px solid #f3b6ae;flex:none;text-align:center">No anclés ni guardés esta página: su dirección cambia cuando la wifi le da otra al celular. <button class='btn p' onclick="dlg(1)">Guardar el acceso que no falla</button></div>
 <div id=newbar><span id=newtxt></span><a class='btn p' id=newzip href='#'>&darr; Descargar todo (.zip)</a></div>
 <div id=feed><div class=col id=col></div></div>
 <div class=bar><div class=in>
@@ -73,12 +74,21 @@ body{display:flex;flex-direction:column;background:#ece7dc}
 <div id=lost>Se perdió la conexión con el celular. Reintentando&hellip;</div>
 <div id=lb><div class=lt><span id=lbn></span><a class=btn id=lbd href=#>&darr; Descargar</a><button class=btn onclick="lbClose()">&#10005; Cerrar</button></div>
 <div class=st2><button class="nv pv" onclick="lbGo(-1)">&#8249;</button><div id=lbc style="display:contents"></div><button class="nv nx" onclick="lbGo(1)">&#8250;</button></div></div>
+<div id=pind style="position:fixed;inset:0;background:rgba(23,33,43,.45);display:none;align-items:center;justify-content:center;z-index:31;padding:20px" onclick="if(event.target==this)pin(0)"><div style="background:#fff;border-radius:18px;max-width:620px;padding:26px 30px;font-size:14px;line-height:1.55">
+<h4 style="margin:0 0 10px;font-size:19px">Anclar PasaArchivos como app</h4>
+<p>Así se abre en su propia ventana, sin barra de direcciones, desde la barra de tareas.</p><ol>
+<li>En el Escritorio: clic derecho &rarr; <b>Nuevo</b> &rarr; <b>Acceso directo</b>.</li>
+<li>En la ubicación, pegá este texto:<div style="display:flex;gap:8px;margin:8px 0"><input id=pincmd readonly style="flex:1;font:12px Consolas,monospace;padding:9px;border:1px solid var(--line);border-radius:8px;background:#f7f4ee"><button class='btn p' onclick="cp()">Copiar</button></div></li>
+<li>Siguiente &rarr; nombre <b>PasaArchivos</b> &rarr; Finalizar.</li>
+<li>Clic derecho sobre el acceso nuevo &rarr; <b>Mostrar más opciones</b> &rarr; <b>Anclar a la barra de tareas</b>. Después podés borrar el del Escritorio.</li></ol>
+<p style="color:var(--mut);font-size:12.5px">Importante: no muevas ni renombres PasaArchivos.html después de esto; el acceso directo apunta a donde está ahora (<span id=pinpath></span>). Si Windows dice que no encuentra el navegador, el programa está en otra carpeta: avisá y se ajusta.</p>
+<div style="margin-top:14px;text-align:right"><button class=btn onclick="pin(0)">Cerrar</button></div></div></div>
 <div id=dlg onclick="if(event.target==this)dlg(0)"><div class=in><h4>Guardar acceso en esta PC</h4>
 <p>El acceso es un archivo pequeño (<b>PasaArchivos.html</b>) que abre esta conversación y busca al celular solo. Si el celular todavía no está listo, espera y se conecta en cuanto aparezca.</p><ol>
 <li>Tocá <b>Descargar acceso</b>.</li>
 <li>Mové <b>PasaArchivos.html</b> de Descargas a un lugar fijo, por ejemplo el Escritorio.</li>
 <li>Cada vez que lo necesités, abrilo con doble clic. Si lo querés en favoritos, abrilo y presioná <b>Ctrl + D</b>.</li></ol>
-<div class=w>Si tenés accesos viejos de PasaFotos (instalado como aplicación o en favoritos), borralos: ya no funcionan.</div>
+<div class=w>No anclés ni instalés como aplicación la página con números (http://192.168&hellip;): deja de funcionar cuando la wifi le cambia la dirección al celular. Anclá <b>PasaArchivos.html</b>: al abrirlo trae el botón <b>Anclar como app</b>. Si ya habías anclado la otra, desinstalala desde su menú &#8942;.</div>
 <div class=x><button class=btn onclick="dlg(0)">Cerrar</button><a class='btn p' id=accbtn href='#' download=PasaArchivos.html>Descargar acceso</a></div></div></div>
 <script>
 try{localStorage.setItem('pa-tok','{{TOKEN}}')}catch(e){}
@@ -113,7 +123,11 @@ function got(id){setTimeout(function(){M.forEach(function(m){if(m.id==id)m.d=tru
 $('newzip').onclick=function(){setTimeout(function(){M.forEach(function(m){if(!m.me&&m.x==null&&!m.d){m.d=true;var e=$('m'+m.id);if(e)e.replaceWith(bubble(m))}});newbar()},900)};
 function poll(){fetch(B+'m?after='+last,{cache:'no-store'}).then(function(r){if(r.status==403){bad();throw 1}if(!r.ok)throw 0;return r.json()}).then(function(j){
  miss=0;$('lost').style.display='none';if(gen!==null&&j.gen!==gen){gen=j.gen;M=[];last=0;lastDay='';col.innerHTML='';poll();return}gen=j.gen;add(j.msgs)}).catch(function(e){if(e===1)return;miss++;if(miss>=2)$('lost').style.display='block';if(miss>=4&&window.lost)window.lost()})}
-function start(){$('newzip').href=B+'zip?nuevos=1';$('accbtn').href=B+'acceso.html';poll();if(!window._iv)window._iv=setInterval(poll,2000)}
+function pin(o){$('pind').style.display=o?'flex':'none';if(!o)return;var path=decodeURI(location.pathname.replace(/^\//,'')).replace(/\//g,'\\');
+ var edge=navigator.userAgent.indexOf('Edg/')>=0,exe=edge?'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe':'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+ $('pincmd').value='"'+exe+'" --app="'+location.href.split('#')[0]+'"';$('pinpath').textContent=path}
+function cp(){var i=$('pincmd');i.select();try{navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}}
+function start(){if(location.protocol=='file:')$('pinbtn').style.display='';else $('warnbar').style.display='flex';$('newzip').href=B+'zip?nuevos=1';$('accbtn').href=B+'acceso.html';poll();if(!window._iv)window._iv=setInterval(poll,2000)}
 function bad(){location.replace((B||'/').replace(/k\/[^/]+\/$/,''))}
 /*{{BOOT}}*/
 function lbList(){return M.filter(function(m){return m.k=='img'||m.k=='vid'})}

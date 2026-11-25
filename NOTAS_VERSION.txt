@@ -1,1 +1,1 @@
-El acceso guardado en la PC (PasaArchivos.html) ahora es el chat completo: ya no salta a la dirección del celular, así que el navegador no muestra «No es seguro», y si el celular cambia de dirección lo vuelve a encontrar solo. Descargá el acceso de nuevo desde la página de la PC.
+El acceso PasaArchivos.html trae el botón «Anclar como app» para abrirlo en su propia ventana desde la barra de tareas. La página con números ahora avisa que no se debe anclar, porque deja de funcionar cuando cambia la dirección del celular.
